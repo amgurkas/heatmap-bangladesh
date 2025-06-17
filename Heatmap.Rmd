@@ -1,0 +1,54 @@
+---
+title: "HeatMapClimateDisasters"
+author: "Alyssa"
+date: "2025-06-16"
+output: html_document
+---
+
+```{r load-libraries, include=FALSE}
+library(tidyverse)
+library(httr)
+library(sf)
+library(plotly)
+```
+
+```{r read-shp-files, include=FALSE}
+sh1 <- st_read("data/adm1.geojson")
+sh2 <- st_read("data/adm2.geojson")
+pop_data <- read_csv("data/bgd_admpop_adm2_2022.csv")
+```
+
+```{r def-vul-pop, include=FALSE}
+pop_data <- pop_data %>%
+  mutate(
+    young_pop = T_00_04,T_05_09,
+    total_pop = T_TL,
+    prop_young = young_pop / total_pop
+  )  
+```
+
+```{r join-data, include=FALSE}
+# Match by name or code depending on your dataset
+joined <- sh2 %>%
+  left_join(pop_data, by = c("name" = "ADM2_NAME"))
+```
+
+### Vulnerable Populations in Bangladesh
+```{r plotly-map, echo=FALSE, warning=FALSE, message=FALSE,fig.align='center'}
+ex_map <- ggplot(joined) +
+  geom_sf(aes(fill = prop_young,
+              text = paste0(
+    "Proportion Young= ", round(prop_young, 3), "\n",
+    "District = ", name)), 
+    color = "gray30", size = 0.1) +
+  scale_fill_gradient(low = "white", high = "red", na.value = "gray90",
+                      name = "Young Proportion (aged 0-14)") +
+  theme_minimal() +
+  labs(title = "Proportion of Young Population by District (Bangladesh ADM2)") +
+  theme(legend.position = "bottom")
+
+plot <- ggplotly(ex_map,
+         tooltip = "text")
+
+htmlwidgets::saveWidget(plot, "plotly_graph.html", selfcontained = FALSE)
+```
